@@ -32,6 +32,6 @@ jobs:
       - name: Deploy to Nais
         uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1 # ratchet:nais/deploy/actions/deploy@v2
         env:
-          CLUSTER: the-g-team
+          CLUSTER: prod-gcp
           RESOURCE: .nais/naisjob.yaml
           WORKLOAD_IMAGE: ${{ steps.docker-build-push.outputs.image }}
