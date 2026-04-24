@@ -19,18 +19,18 @@ import (
 
 const githubAPIBase = "https://api.github.com"
 
-func NewInstallationToken(ctx context.Context, appID, clientID, privateKeyPEM, org string) (string, error) {
+func GenerateAccessToken(ctx context.Context, appID, installationID, privateKeyPEM, org string) (string, error) {
 	key, err := parseRSAPrivateKey(privateKeyPEM)
 	if err != nil {
 		return "", fmt.Errorf("private key: %w", err)
 	}
 
-	jwt, err := buildJWT(clientID, key)
+	jwt, err := buildJWT(appID, key)
 	if err != nil {
 		return "", fmt.Errorf("building JWT: %w", err)
 	}
 
-	token, err := generateInstallationToken(ctx, jwt, clientID)
+	token, err := generateInstallationToken(ctx, jwt, installationID)
 	if err != nil {
 		return "", fmt.Errorf("generating installation token: %w", err)
 	}
@@ -90,10 +90,8 @@ func base64url(data []byte) string {
 	return base64.RawURLEncoding.EncodeToString(data)
 }
 
-// generateInstallationToken calls POST /app/installations/{id}/access_tokens and
-// returns the token string.
-func generateInstallationToken(ctx context.Context, jwt, clientID string) (string, error) {
-	url := fmt.Sprintf("%s/app/installations/%s/access_tokens", githubAPIBase, clientID)
+func generateInstallationToken(ctx context.Context, jwt, installationID string) (string, error) {
+	url := fmt.Sprintf("%s/app/installations/%s/access_tokens", githubAPIBase, installationID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader("{}"))
 	if err != nil {
 		return "", err
@@ -109,7 +107,7 @@ func generateInstallationToken(ctx context.Context, jwt, clientID string) (strin
 
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("POST /app/installations/%s/access_tokens returned %d: %s", clientID, resp.StatusCode, body)
+		return "", fmt.Errorf("POST /app/installations/%s/access_tokens returned %d: %s", installationID, resp.StatusCode, body)
 	}
 
 	var result struct {

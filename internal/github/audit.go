@@ -21,7 +21,7 @@ func FetchEvents(ctx context.Context, cfg config.Config, after string) ([]github
 	var collected []*github.AuditEntry
 	var newestCursor string
 
-	token, err := NewInstallationToken(ctx, cfg.GithubAppID, cfg.GithubClientID, cfg.GithubAppPrivateKey, cfg.GithubOrg)
+	token, err := GenerateAccessToken(ctx, cfg.GithubClientID, cfg.GithubInstallationID, cfg.GithubAppPrivateKey, cfg.GithubOrg)
 	if err != nil {
 		return nil, "", fmt.Errorf("obtaining GitHub installation token: %w", err)
 	}
