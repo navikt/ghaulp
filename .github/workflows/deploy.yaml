@@ -1,0 +1,37 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    name: Build, push and deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
+        with:
+          fetch-depth: 0 # Fetch all history for what-changed action
+      - name: Determine what to do
+        id: changed-files
+        uses: "nais/what-changed@bc3dad0463b36ad29044134bba5898f0af73c34c" # ratchet:nais/what-changed@main
+        with:
+          files: .nais/naisjob.yaml
+      - name: Build and push image and SBOM to OCI registry
+        if: steps.changed-files.outputs.changed != 'only-inputs'
+        uses: nais/docker-build-push@cd5ec5663feb0e05c3fa374d1fb442605b046c6b # ratchet:nais/docker-build-push@v0
+        id: docker-build-push
+        with:
+          team: the-g-team
+      - name: Deploy to Nais
+        uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1 # ratchet:nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: the-g-team
+          RESOURCE: .nais/naisjob.yaml
+          WORKLOAD_IMAGE: ${{ steps.docker-build-push.outputs.image }}

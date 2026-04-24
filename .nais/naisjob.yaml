@@ -1,0 +1,20 @@
+apiVersion: nais.io/v1
+kind: Naisjob
+metadata:
+  name: ghaulp
+  namespace: the-g-team
+  labels:
+    team: the-g-team
+spec:
+  schedule: "*/5 * * * *"
+  env:
+    - name: GITHUB_ORG
+      value: navikt
+    - name: GCS_BUCKET
+      value: ghaulp
+  envFrom:
+    - secret: ghaulp
+  gcp:
+    buckets:
+      - name: ghaulp
+  ttlSecondsAfterFinished: 300
