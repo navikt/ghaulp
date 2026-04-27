@@ -42,7 +42,7 @@ func Read(ctx context.Context, bucket string) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	return time.Unix(timestamp/1000, 0), nil
+	return time.Unix(0, timestamp), nil
 }
 
 // Write persists the newest audit log timestamp to GCS.

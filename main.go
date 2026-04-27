@@ -40,7 +40,7 @@ func run() error {
 		return err
 	}
 
-	if err := bucket.Write(ctx, cfg.GCSBucket, newestTimestamp.UnixMilli()); err != nil {
+	if err := bucket.Write(ctx, cfg.GCSBucket, newestTimestamp.UnixNano()); err != nil {
 		return err
 	}
 
