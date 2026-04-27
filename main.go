@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
+	"github.com/navikt/ghaulp/internal/bucket"
 	"github.com/navikt/ghaulp/internal/config"
-	"github.com/navikt/ghaulp/internal/cursor"
 	"github.com/navikt/ghaulp/internal/github"
 	"github.com/navikt/ghaulp/internal/slack"
 )
@@ -18,13 +18,13 @@ func run() error {
 		return err
 	}
 
-	cur, err := cursor.Read(ctx, cfg.GCSBucket)
+	timestamp, err := bucket.Read(ctx, cfg.GCSBucket)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Starting run. Stored cursor: %q", cur)
-	events, newestCursor, err := github.FetchEvents(ctx, cfg, cur)
+	log.Printf("Starting run. Stored cursor: %q", timestamp)
+	events, newestTimestamp, err := github.FetchEvents(ctx, cfg, timestamp)
 	if err != nil {
 		return err
 	}
@@ -40,13 +40,11 @@ func run() error {
 		return err
 	}
 
-	if newestCursor != "" && newestCursor != cur {
-		if err := cursor.Write(ctx, cfg.GCSBucket, newestCursor); err != nil {
-			return err
-		}
-
-		log.Printf("Cursor updated to %q", newestCursor)
+	if err := bucket.Write(ctx, cfg.GCSBucket, newestTimestamp.UnixMilli()); err != nil {
+		return err
 	}
+
+	log.Printf("Cursor updated to %q", newestTimestamp)
 
 	return nil
 }

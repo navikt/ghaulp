@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/go-github/v62/github"
 	"github.com/navikt/ghaulp/internal/config"
@@ -17,62 +18,41 @@ const (
 // FetchEvents retrieves audit log entries for the two integration event types,
 // stopping pagination once the stored cursor is encountered or pages run out.
 // Returned events are ordered newest-first (as returned by the API).
-func FetchEvents(ctx context.Context, cfg config.Config, after string) ([]github.AuditEntry, string, error) {
-	var collected []*github.AuditEntry
-	var newestCursor string
-
+func FetchEvents(ctx context.Context, cfg config.Config, timestamp time.Time) ([]*github.AuditEntry, time.Time, error) {
 	token, err := GenerateAccessToken(ctx, cfg.GithubClientID, cfg.GithubInstallationID, cfg.GithubAppPrivateKey, cfg.GithubOrg)
 	if err != nil {
-		return nil, "", fmt.Errorf("obtaining GitHub installation token: %w", err)
+		return nil, time.Time{}, fmt.Errorf("obtaining GitHub installation token: %w", err)
 	}
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	for _, phrase := range []string{
-		"action:" + EventInstallation,
-		"action:" + EventInstallationRequest,
-	} {
-		opts := &github.GetAuditLogOptions{
-			Phrase: new(phrase),
-			Order:  new("desc"),
-			ListCursorOptions: github.ListCursorOptions{
-				PerPage: 100,
-			},
-		}
+	searchPhrase := "action:integration_installation action:integration_installation_request -action:integration_installation.repositories_added  -action:integration_installation.repositories_removed"
+	opts := &github.GetAuditLogOptions{
+		Phrase: new(searchPhrase),
+		Order:  new("desc"),
+		ListCursorOptions: github.ListCursorOptions{
+			PerPage: 100,
+		},
+	}
 
-		if after != "" {
-			opts.ListCursorOptions.After = after
-		}
+	entries, _, err := client.Organizations.GetAuditLog(ctx, cfg.GithubOrg, opts)
+	if err != nil {
+		return nil, time.Time{}, fmt.Errorf("fetching audit log (phrase=%q): %w", searchPhrase, err)
+	}
 
-		for {
-			entries, resp, err := client.Organizations.GetAuditLog(ctx, cfg.GithubOrg, opts)
-			if err != nil {
-				return nil, "", fmt.Errorf("fetching audit log (phrase=%q): %w", phrase, err)
-			}
-
-			// Capture the cursor from the very first page of the first query
-			// as the new high-water mark.
-			if newestCursor == "" && resp.Before != "" {
-				newestCursor = resp.Before
-			}
-
-			collected = append(collected, entries...)
-
-			if resp.After == "" {
-				break
-			}
-			opts.ListCursorOptions.After = resp.After
+	var collected []*github.AuditEntry
+	for _, entry := range entries {
+		if entry.Timestamp.After(timestamp) {
+			collected = append(collected, entry)
 		}
 	}
 
-	var filtered []github.AuditEntry
-	for _, e := range collected {
-		if e.Action != nil && (*e.Action == EventInstallation || *e.Action == EventInstallationRequest) {
-			filtered = append(filtered, *e)
-		}
+	var newestTimestamp time.Time
+	if len(collected) > 0 {
+		newestTimestamp = collected[0].GetTimestamp().Time
 	}
 
-	return filtered, newestCursor, nil
+	return collected, newestTimestamp, nil
 }

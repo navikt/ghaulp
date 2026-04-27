@@ -15,9 +15,9 @@ type payload struct {
 	Text string `json:"text"`
 }
 
-func PostEvents(webhookURL string, events []github.AuditEntry) error {
+func PostEvents(webhookURL string, events []*github.AuditEntry) error {
 	for i := len(events) - 1; i >= 0; i-- {
-		msg := FormatMessage(events[i])
+		msg := FormatMessage(*events[i])
 		if err := post(webhookURL, msg); err != nil {
 			return fmt.Errorf("posting event to Slack: %w", err)
 		}
