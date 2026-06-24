@@ -28,7 +28,7 @@ func FetchEvents(ctx context.Context, cfg config.Config, timestamp time.Time) ([
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	searchPhrase := "action:integration_installation action:integration_installation_request -action:integration_installation.repositories_added  -action:integration_installation.repositories_removed"
+	searchPhrase := "action:integration_installation action:integration_installation_request -action:integration_installation.repositories_added -action:integration_installation.repositories_removed"
 	opts := &github.GetAuditLogOptions{
 		Phrase: new(searchPhrase),
 		Order:  new("desc"),
