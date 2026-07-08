@@ -10,7 +10,7 @@ COPY internal/ internal/
 
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /ghaulp .
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM cgr.dev/chainguard/static:latest
 
 COPY --from=builder /ghaulp /ghaulp
 
