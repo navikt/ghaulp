@@ -36,7 +36,19 @@ func run() error {
 
 	log.Printf("Fetched %d matching events", len(events))
 
-	if err := slack.PostEvents(cfg.SlackWebhook, events); err != nil {
+	var installationIDs map[string]int64
+	for _, e := range events {
+		if e.Action != nil && *e.Action == github.EventIntegrationUpdate {
+			installationIDs, err = github.ResolveInstallationIDs(ctx, cfg)
+			if err != nil {
+				log.Printf("Warning: could not resolve installation IDs, permission links will be omitted: %v", err)
+				installationIDs = map[string]int64{}
+			}
+			break
+		}
+	}
+
+	if err := slack.PostEvents(cfg.SlackWebhook, events, installationIDs, cfg.GithubOrg); err != nil {
 		return err
 	}
 
