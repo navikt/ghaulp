@@ -3,6 +3,8 @@ package github
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v62/github"
@@ -79,7 +81,12 @@ func ResolveInstallationIDs(ctx context.Context, cfg config.Config) (map[string]
 	ids := make(map[string]int64, len(result.Installations))
 	for _, inst := range result.Installations {
 		if inst.AppSlug != nil && inst.ID != nil {
-			ids[*inst.AppSlug] = *inst.ID
+			// Store with lowercased key so lookups are case-insensitive.
+			// The audit log uses the display name (e.g. "GPO-backupsyncApp") while
+			// the installations API returns the URL slug (e.g. "gpo-backupsyncapp").
+			key := strings.ToLower(*inst.AppSlug)
+			ids[key] = *inst.ID
+			log.Printf("ResolveInstallationIDs: slug=%q id=%d", *inst.AppSlug, *inst.ID)
 		}
 	}
 	return ids, nil

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v62/github"
@@ -72,7 +73,13 @@ func FormatMessage(e github.AuditEntry, installationIDs map[string]int64, org st
 	msg := fmt.Sprintf("*%s* by `%s` — app: `%s` (%s)", action, actor, appName, ts)
 
 	if action == "integration.update" {
-		if id, ok := installationIDs[appName]; ok {
+		// The audit log "integration" field is the display name; the installations map
+		// is keyed by lowercased slug. Lowercase both sides for a case-insensitive match.
+		slug := strings.ToLower(additionalString(e, "integration"))
+		if slug == "" {
+			slug = strings.ToLower(appName)
+		}
+		if id, ok := installationIDs[slug]; ok {
 			msg += fmt.Sprintf("\n<https://github.com/organizations/%s/settings/installations/%d/permissions/update|Review and approve permissions>", org, id)
 		}
 	}
