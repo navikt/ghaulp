@@ -73,21 +73,27 @@ func ResolveInstallationIDs(ctx context.Context, cfg config.Config) (map[string]
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	result, _, err := client.Organizations.ListInstallations(ctx, cfg.GithubOrg, nil)
-	if err != nil {
-		return nil, fmt.Errorf("listing org installations: %w", err)
-	}
-
-	ids := make(map[string]int64, len(result.Installations))
-	for _, inst := range result.Installations {
-		if inst.AppSlug != nil && inst.ID != nil {
-			// Store with lowercased key so lookups are case-insensitive.
-			// The audit log uses the display name (e.g. "GPO-backupsyncApp") while
-			// the installations API returns the URL slug (e.g. "gpo-backupsyncapp").
-			key := strings.ToLower(*inst.AppSlug)
-			ids[key] = *inst.ID
-			log.Printf("ResolveInstallationIDs: slug=%q id=%d", *inst.AppSlug, *inst.ID)
+	ids := make(map[string]int64)
+	opts := &github.ListOptions{PerPage: 100}
+	for {
+		result, resp, err := client.Organizations.ListInstallations(ctx, cfg.GithubOrg, opts)
+		if err != nil {
+			return nil, fmt.Errorf("listing org installations (page %d): %w", opts.Page, err)
 		}
+		for _, inst := range result.Installations {
+			if inst.AppSlug != nil && inst.ID != nil {
+				// Store with lowercased key so lookups are case-insensitive.
+				// The audit log uses the display name (e.g. "GPO-backupsyncApp") while
+				// the installations API returns the URL slug (e.g. "gpo-backupsyncapp").
+				key := strings.ToLower(*inst.AppSlug)
+				ids[key] = *inst.ID
+				log.Printf("ResolveInstallationIDs: slug=%q id=%d", *inst.AppSlug, *inst.ID)
+			}
+		}
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
 	}
 	return ids, nil
 }
