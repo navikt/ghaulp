@@ -1,0 +1,19 @@
+version: 2
+
+multi-ecosystem-groups:
+  ghaulp:
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    patterns: ["*"]
+    multi-ecosystem-group: "ghaulp"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    patterns: ["*"]
+    multi-ecosystem-group: "ghaulp"
