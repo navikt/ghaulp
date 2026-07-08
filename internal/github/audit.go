@@ -13,6 +13,7 @@ import (
 const (
 	EventInstallation        = "integration_installation"
 	EventInstallationRequest = "integration_installation_request"
+	EventIntegrationUpdate   = "integration.update"
 )
 
 // FetchEvents retrieves audit log entries for the two integration event types,
@@ -28,7 +29,7 @@ func FetchEvents(ctx context.Context, cfg config.Config, timestamp time.Time) ([
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	searchPhrase := "action:integration_installation action:integration_installation_request -action:integration_installation.repositories_added -action:integration_installation.repositories_removed"
+	searchPhrase := "action:integration_installation action:integration_installation_request action:integration.update -action:integration_installation.repositories_added -action:integration_installation.repositories_removed"
 	opts := &github.GetAuditLogOptions{
 		Phrase: new(searchPhrase),
 		Order:  new("desc"),
@@ -55,4 +56,31 @@ func FetchEvents(ctx context.Context, cfg config.Config, timestamp time.Time) ([
 	}
 
 	return collected, newestTimestamp, nil
+}
+
+// ResolveInstallationIDs fetches all GitHub App installations for the org and returns
+// a map of app slug → installation ID. This is used to build approval links for
+// integration.update events, which do not carry an installation ID themselves.
+func ResolveInstallationIDs(ctx context.Context, cfg config.Config) (map[string]int64, error) {
+	token, err := GenerateAccessToken(ctx, cfg.GithubClientID, cfg.GithubInstallationID, cfg.GithubAppPrivateKey, cfg.GithubOrg)
+	if err != nil {
+		return nil, fmt.Errorf("obtaining GitHub installation token for installation lookup: %w", err)
+	}
+
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	result, _, err := client.Organizations.ListInstallations(ctx, cfg.GithubOrg, nil)
+	if err != nil {
+		return nil, fmt.Errorf("listing org installations: %w", err)
+	}
+
+	ids := make(map[string]int64, len(result.Installations))
+	for _, inst := range result.Installations {
+		if inst.AppSlug != nil && inst.ID != nil {
+			ids[*inst.AppSlug] = *inst.ID
+		}
+	}
+	return ids, nil
 }

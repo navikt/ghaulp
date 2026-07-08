@@ -15,9 +15,9 @@ type payload struct {
 	Text string `json:"text"`
 }
 
-func PostEvents(webhookURL string, events []*github.AuditEntry) error {
+func PostEvents(webhookURL string, events []*github.AuditEntry, installationIDs map[string]int64, org string) error {
 	for i := len(events) - 1; i >= 0; i-- {
-		msg := FormatMessage(*events[i])
+		msg := FormatMessage(*events[i], installationIDs, org)
 		if err := post(webhookURL, msg); err != nil {
 			return fmt.Errorf("posting event to Slack: %w", err)
 		}
@@ -45,8 +45,9 @@ func post(webhookURL, message string) error {
 	return nil
 }
 
-// FormatMessage builds a minimal Slack message from an audit entry.
-func FormatMessage(e github.AuditEntry) string {
+// FormatMessage builds a Slack message from an audit entry.
+// For integration.update events an actionable link to the permissions approval page is appended.
+func FormatMessage(e github.AuditEntry, installationIDs map[string]int64, org string) string {
 	action := stringVal(e.Action)
 	actor := stringVal(e.Actor)
 
@@ -68,7 +69,15 @@ func FormatMessage(e github.AuditEntry) string {
 		ts = e.Timestamp.Format(time.RFC3339)
 	}
 
-	return fmt.Sprintf("*%s* by `%s` — app: `%s` (%s)", action, actor, appName, ts)
+	msg := fmt.Sprintf("*%s* by `%s` — app: `%s` (%s)", action, actor, appName, ts)
+
+	if action == "integration.update" {
+		if id, ok := installationIDs[appName]; ok {
+			msg += fmt.Sprintf("\n<https://github.com/organizations/%s/settings/installations/%d/permissions/update|Review and approve permissions>", org, id)
+		}
+	}
+
+	return msg
 }
 
 // additionalString extracts a string value from AuditEntry.AdditionalFields or AuditEntry.Data by key.
