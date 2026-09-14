@@ -1,6 +1,6 @@
 module github.com/navikt/ghaulp
 
-go 1.26
+go 1.26.0
 
 tool (
 	github.com/securego/gosec/v2/cmd/gosec
@@ -11,9 +11,9 @@ tool (
 )
 
 require (
-	cloud.google.com/go/storage v1.66.0
+	cloud.google.com/go/storage v1.67.1
 	github.com/google/go-github/v62 v62.0.0
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/oauth2 v0.37.0
 )
 
 require (
