@@ -13,7 +13,7 @@ tool (
 require (
 	cloud.google.com/go/storage v1.70.0
 	github.com/google/go-github/v62 v62.0.0
-	golang.org/x/oauth2 v0.37.0
+	golang.org/x/oauth2 v0.38.0
 )
 
 require (
